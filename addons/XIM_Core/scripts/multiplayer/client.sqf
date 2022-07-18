@@ -1,3 +1,6 @@
+// ======================================== Init ========================================
+
+XIM_bMusicPlaying = false;		//Not synchronized over network
 
 // ======================================== FUNCTIONS ========================================
 
@@ -25,24 +28,28 @@ XIM_fncStartMusic = // starts playing music for all clients in the group
 
 // ======================================== EVENT HANDLERS ========================================
 
-addMusicEventHandler ["MusicStart", {
-	
-	if !(XIM_bSystemEnabled) exitWith {}; 	//if mission has disabled XIM, they probably don't want the 'Now Playing' UI to pop up when Zeus/other script starts a song 
-											//then again, the 'Now Playing' UI is kinda cool and Zeus/other might want it on. Consider removing this line and just adding a disclaimer to
-											//'XIM_bSystemEnabled' in the CBA options that they also need to disable XIM_bNowPlayingEnabled if they want to hide the 'Now Playing' UI too.
-	
-	if (XIM_bNowPlayingEnabled) then
-	{
-		private _trackname = getText (configFile >> "CfgMusic" >> _this select 0 >> "name");
-		private _artistname = getText (configFile >> "CfgMusic" >> _this select 0 >> "artist");
-		[parseText format["Now playing<br/><t font='PuristaBold' size='1.6'>%1</t><br/><t font='PuristaBold' size='0.8'>%2</t>", _trackname,_artistname], true, nil, 5, 1, 0] spawn BIS_fnc_textTiles;
-	};
+addMusicEventHandler ["MusicStart", // once the currently playing track has finished playing
+{
+	XIM_bMusicPlaying = true;		//Not synchronized over network
 }];
 
 addMusicEventHandler ["MusicStop", // once the currently playing track has finished playing
 {
+	XIM_bMusicPlaying = false;		//Not synchronized over network
 	if ((leader (group player)) == player) then
 	{
 		[player] call XIM_fncPlayNext;
 	};
 }];
+
+"XIM_bSystemEnabled" addPublicVariableEventHandler {	//Automatically resumes music when system is re-enabled. Doesn't seem to work in local MP (on the host's machine, untested with multiple players)
+	
+	if !(XIM_bSystemEnabled) exitWith {};	//If the system was changed to disabled, then there's no need to resume music, so cancel.
+
+	if (XIM_bMusicPlaying) exitWith {};		//XIM will automatically play music after current song ends, so if there's a song playing then there's no need to manually resume music playing
+
+	if ((leader (group player)) == player) then
+	{
+		[player] call XIM_fncPlayNext;		//Start XIM's chain of functions to play music 
+	};
+};

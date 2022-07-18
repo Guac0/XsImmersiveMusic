@@ -194,6 +194,7 @@ player setVariable ["XIM_bCombatMaster", false]; // set the XIM_bCombatMaster va
 player setVariable ["XIM_bMusicStopped", false]; // set the XIM_bMusicStopped variable on the client, with the default value of false
 [player] call XIM_fncSendGroup; // calls the XIM_fncSendGroup function with the argument player
 [player] call XIM_fncCombatTimeout; // calls the XIM_fncCombatTimeout function with the argument player
+XIM_bMusicPlaying = false;		//Not synchronized over network
 
 // ======================================== EVENT HANDLERS ========================================
 
@@ -202,6 +203,8 @@ player setVariable ["XIM_bMusicStopped", false]; // set the XIM_bMusicStopped va
 ["ace_firedNonPlayerVehicle", XIM_fncMain] call CBA_fnc_addEventHandler; // adds event handler for when an AI fires inside a vehicle
 
 addMusicEventHandler ["MusicStart", {
+	
+	XIM_bMusicPlaying = true;		//Not synchronized over network
 	
 	if !(XIM_bSystemEnabled) exitWith {}; 	//if mission has disabled XIM, they probably don't want the 'Now Playing' UI to pop up when Zeus/other script starts a song 
 											//then again, the 'Now Playing' UI is kinda cool and Zeus/other might want it on. Consider removing this line and just adding a disclaimer to
@@ -217,5 +220,18 @@ addMusicEventHandler ["MusicStart", {
 
 addMusicEventHandler ["MusicStop", // once the currently playing track has finished playing
 {
+	XIM_bMusicPlaying = false;		//Not synchronized over network
 	[player] call XIM_fncPlayNext;
 }];
+
+"XIM_bSystemEnabled" addPublicVariableEventHandler {	//Automatically resumes music when system is re-enabled. Doesn't trigger in singleplayer.
+	
+	if !(XIM_bSystemEnabled) exitWith {};	//If the system was changed to disabled, then there's no need to resume music, so cancel.
+
+	if (XIM_bMusicPlaying) exitWith {};		//XIM will automatically play music after current song ends, so if there's a song playing then there's no need to manually resume music playing
+
+	if ((leader (group player)) == player) then
+	{
+		[player] call XIM_fncPlayNext;		//Start XIM's chain of functions to play music 
+	};
+};
